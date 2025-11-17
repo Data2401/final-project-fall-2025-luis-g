@@ -31,10 +31,12 @@ library(knitr)
 - name: Official meteorite name
 - id: Identification number from NASA
 - nametype: “Valid” is a normal meteoroid. “Relict” is a weathered down meteoroid
+- group: Combines related meteorite subclasses into their umbrella category
 - class: Meteorite classification (e.g., H5, L6, CM2)
 - mass (g): Mass of the meteorite in grams
 - fall: “Fell” (observed fall) or “Found” later (not observed)
 - year: The year it fell or was found
+- origin: Where the meteorite originated from
 - reclat / reclong: Latitude and longitude of discovery site
 - type: The main group of which each meteorite is a part of
   - Stony: Outer crust of asteroids
@@ -168,44 +170,36 @@ meteroite_map <- meteroite %>%
     !is.na(reclat),
     !is.na(reclong),
     reclat  >= -90, reclat <= 90,
-    reclong >= -180, reclong <= 180
-  )
+    reclong >= -180, reclong <= 180)
 
 meteroite_sf <- st_as_sf(
   meteroite_map,
   coords = c("reclong", "reclat"),
-  crs    = 4326
-)
+  crs    = 4326)
 
 p_stony <- mapview(
   meteroite_sf[meteroite_sf$type == "Stony", ],
   col.regions = "red",
-  layer.name  = "Stony"
-)
-
+  layer.name  = "Stony")
 p_iron <- mapview(
   meteroite_sf[meteroite_sf$type == "Iron", ],
   col.regions = "blue",
-  layer.name  = "Iron"
-)
+  layer.name  = "Iron")
 
 p_ach <- mapview(
   meteroite_sf[meteroite_sf$type == "Achondrite", ],
   col.regions = "darkgrey",
-  layer.name  = "Achondrite"
-)
+  layer.name  = "Achondrite")
 
 p_stonI <- mapview(
   meteroite_sf[meteroite_sf$type == "Stony-Iron", ],
   col.regions = "yellow",
-  layer.name  = "Stony-Iron"
-)
+  layer.name  = "Stony-Iron")
 
 p_other <- mapview(
   meteroite_sf[meteroite_sf$type == "Other/Unknown", ],
   col.regions = "green",
-  layer.name  = "Other/Unknown"
-)
+  layer.name  = "Other/Unknown")
 p_stony + p_iron + p_ach + p_other + p_stonI
 
 ```
@@ -450,16 +444,15 @@ The origin map confirms that almost all recorded meteorites come from asteroid b
 land <- 0.29
 ocean <- 0.71
 land_meteors <- meteroite %>% 
-  filter(!is.na(reclat), !is.na(reclong)) %>% 
   nrow()
 estimated_ocean <- land_meteors * (ocean / land)
 result <- tibble(
   Region = c("Land (Found)", "Ocean (Estimated)"),
   Meteorites = c(land_meteors, round(estimated_ocean)))
-kable(result, caption = "Found Land Meteorites vs Estimated Ocean Meteorites")
+kable(result, caption = "Estimated Ocean Meteorites vs Found Land Meteorites")
 ggplot(result, aes(x = Region, y = Meteorites, fill = Region)) + geom_col() +
   coord_flip() +
-  labs(title = "Estimated Meteorites in the Ocean vs Found on Land",y = "Meteorite Count") +
+  labs(title = "Estimated Meteorites in the Ocean vs Found on Land", y = "Meteorite Count") +
   theme_minimal() 
 
 ```
