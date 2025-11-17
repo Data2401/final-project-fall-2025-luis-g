@@ -91,11 +91,55 @@ meteroite <- meteroite %>%
       TRUE ~ reclong_original
     )
   ) %>% 
-  drop_na(reclat)%>% 
-  select(name, id, type, nametype, class, mass, fall, year, reclat, reclong)
+  mutate(
+    group = case_when(
+      str_detect(class, regex("^Iron", ignore_case = TRUE)) ~ "Iron",
+      str_detect(class, regex("^Pallasite", ignore_case = TRUE)) ~ "Pallasite",
+      str_detect(class, regex("^Mesosiderite", ignore_case = TRUE)) ~ "Mesosiderite",
+      str_detect(class, regex("^Martian", ignore_case = TRUE)) ~ "Martian",
+      str_detect(class, regex("^Lunar", ignore_case = TRUE)) ~ "Lunar",
+      str_detect(class, regex("Acapulcoite|Lodranite", ignore_case = TRUE)) ~ "Acapulcoite/Lodranite",
+      str_detect(class, regex("Ureilite", ignore_case = TRUE)) ~ "Ureilite",
+      str_detect(class, regex("Aubrite", ignore_case = TRUE)) ~ "Aubrite",
+      str_detect(class, regex("Winonaite", ignore_case = TRUE)) ~ "Winonaite",
+      str_detect(class, regex("Eucrite", ignore_case = TRUE)) ~ "Eucrite",
+      str_detect(class, regex("Diogenite", ignore_case = TRUE)) ~ "Diogenite",
+      str_detect(class, regex("Howardite", ignore_case = TRUE)) ~ "Howardite",
+      str_detect(class, regex("^EH", ignore_case = TRUE)) ~ "EH",
+      str_detect(class, regex("^EL", ignore_case = TRUE)) ~ "EL",
+      str_detect(class, regex("^E$", ignore_case = TRUE))  ~ "E",
+      str_detect(class, regex("^CI", ignore_case = TRUE)) ~ "CI",
+      str_detect(class, regex("^CM", ignore_case = TRUE)) ~ "CM",
+      str_detect(class, regex("^CO", ignore_case = TRUE)) ~ "CO",
+      str_detect(class, regex("^CV", ignore_case = TRUE)) ~ "CV",
+      str_detect(class, regex("^CK", ignore_case = TRUE)) ~ "CK",
+      str_detect(class, regex("^CR", ignore_case = TRUE)) ~ "CR",
+      str_detect(class, regex("^CB", ignore_case = TRUE)) ~ "CB",
+      str_detect(class, regex("^CH", ignore_case = TRUE)) ~ "CH",
+      str_detect(class, regex("^H", ignore_case = TRUE)) ~ "H",
+      str_detect(class, regex("^L[^L]", ignore_case = TRUE)) ~ "L",
+      str_detect(class, regex("^LL", ignore_case = TRUE)) ~ "LL",
+      str_detect(class, regex("^R", ignore_case = TRUE)) ~ "R",
+      str_detect(class, regex("^K", ignore_case = TRUE)) ~ "K",
+      TRUE ~ "Other/Unknown"
+    )
+  ) %>%  mutate(
+    origin = case_when(
+      group == "Martian" ~ "Mars",
+      group == "Lunar" ~ "Moon",
+      group == "Iron" ~ "Asteroid Core",
+      group %in% c("Pallasite", "Mesosiderite") ~ "Core–Mantle ",
+      group %in% c("H","L","LL","CI","CM","CO","CV","CK","CR","CB","CH","R","K","E","EH","EL") ~ "Asteroid Belt",
+      TRUE ~ "Unknown"
+    )
+  ) %>% 
+  drop_na(reclat) %>% 
+  select(name, id,nametype,type, group, class, mass, fall, year, reclat, reclong, origin)
 
 kable(head(meteroite), caption = "Sample of Meteorite Dataset")
 
+meteroite %>% 
+  distinct(origin)
 ```
 
 ***
@@ -116,14 +160,6 @@ kable(head(meteroite), caption = "Sample of Meteorite Dataset")
  
 #### For my project, I'll explore NASA’s Meteorite Landings dataset. The data shows meteorite discoveries from all over the world, including their size, location, and type. I want to find patterns in when and where meteorites are found and what kinds are most common.
 
-#### Here are the questions I want to answer:
-
-- 1. Where on Earth have the largest meteorites been found?
-- 2. Which meteorite types are found most often?
-- 3. How has the number of meteorite discoveries changed over time?
-- 4. Which hemisphere has more recorded meteorites?
-- 5. Does latitude affect where meteorites land
-- 6. Do we find more meteors or are they found beceause we saw them fall?
 
 ***
 
@@ -181,7 +217,9 @@ p_stony + p_iron + p_ach + p_other + p_stonI
 
 ```
 
-The graph shows us the thousands of points on the world map. Just a few observations we can note that in the more secluded areas like the Amazon Forest, the Russia tundras, and north Canada we are left with little to no data. This doesn't necessarily mean that no meteorites are there, just that it's been harder to explore. We can see and guess where we think is the hot spots for meteorites, but with points on top of points we don't get the full picture, lets take a closer look.
+This map shows thousands of recorded meteorite locations across the globe. In very remote regions such as the Amazon, Russian tundra, and north Canada, there are noticeably fewer points. This does not mean meteorites never land there, it just more likely shows how difficult those areas are to survey. We can start to guess where the “hot spots” of meteorite discoveries are, but with so many overlapping points it is hard to see patterns clearly, so we next look at a density view.
+
+***
 
 #### Density of the meteor landings
 
@@ -211,59 +249,72 @@ ggplot() +
   theme_dark()
 ```
 
-The density heat map shows us the hot spots for meteorites, at least ones we've found. A few notable locations; West Africa, United Emirates, and Antarctica. 
+The density heat map highlights clear hot spots where meteorites have been recorded. Notable locations include West Africa, Arabian Peninsula, and especially Antarctica. Meteorites are easier to recognize on bright ice and snow, and the cold, dry environment helps preserve them instead of letting them weather away. This combination of good preservation and high visibility, plus targeted searches, explains why Antarctica stands out so strongly in the data. 
+
+#### Meteor Landing points by year
 
 ```{r}
 ggplot() +
-  geom_polygon(
-    data = world,
-    aes(x = long, y = lat, group = group),
-    fill = "gray90",
-    color = "white"
-  ) +
-  geom_point(
-    data = meteroite_map,
-    aes(x = reclong, y = reclat, color = year),
-    alpha = 0.5,
-    size = 0.9
-  ) +
-  scale_color_viridis_c(option = "viridis", direction = -1) + 
+  geom_polygon( data = world, aes(x = long, y = lat, group = group), fill = "gray90", color = "white") +
+  geom_point(data = meteroite_map, aes(x = reclong, y = reclat, color = year), alpha = 0.5, size = 0.9) +
+  scale_color_gradientn(colors = rainbow(4)) + 
   coord_fixed(1.3) +
-  labs(
-    title = "Meteorite Landings by Year",
-    x = "Longitude",
-    y = "Latitude",
-    color = "Year"
-  ) +
+  labs(title = "Meteorite Landings by Year", x = "Longitude", y = "Latitude", color = "Year") + 
   theme_dark()
 ```
 
+Coloring the points by year shows that many of the discoveries come from more recent decades, lining up with modern advances in mapping, GPS, and technology. When we combine this with the density map, we see that Antarctica has become a major focus in recent years, likely because technology makes it easier to plan field campaigns in remote ice fields. The polar environment also preserves meteorites that would otherwise be buried, eroded, or lost in more weathered landscapes.
+
 ***
 
-# Which meteorites are found more often
-
+## Are most meteors found or seen falling?
 
 ```{r}
 meteroite %>% 
-  ggplot(aes(x = year, fill = type)) + 
-  geom_density(alpha = .5) +
-  labs(
-    title = "Densities of meteor types"
-  ) +
+  ggplot(aes(x = year, fill = fall)) + geom_density(alpha = .8)+
+  labs(title = "Are Most Meteorites Found or Seen Falling?") +
   theme_minimal()
 ```
 
+The density curves by fall status suggest that most meteorites in this dataset are labeled “Found” rather than “Fell.” In other words, the majority were discovered on the ground after the fact, not observed falling in real time. This fits our earlier observations, as technology and searches improve, we are getting better at finding meteorites that would have been missed in the past, even if we never saw them fall.
+
+## Which year are most types of meteorites found by year
+
+
 ```{r}
 meteroite %>% 
-  ggplot(aes(x = year, fill = fall)) + geom_density(alpha = .5)
+  ggplot(aes(x = year, fill = type)) + geom_density(alpha = .6)+
+  labs(title = "Densities of meteor types") + theme_minimal()
+```
+
+We see that most meteors found in recent years are of the stony and stony-iron type. This is because before modern advances stony meteorites can look very similar to ordinary rocks, so modern tools and classification methods are especially important for recognizing which samples are from Earth or out of this world
+
+***
+
+## Total counts
+
+```{r}
+meteroite %>% 
+  ggplot(aes(x = type, fill = type)) + geom_bar() + labs(title = "Total Count by Types")
 
 ```
 
 ```{r}
 meteroite %>% 
-  ggplot(aes(x = type, fill = type)) + geom_bar()
+  ggplot(aes( x = reorder(origin, table(origin)[origin]), fill = origin)) + geom_bar() + coord_flip() +
+  labs( x = "Meteor Origin", title = "Total Count by Origin")
 
 ```
+
+Most meteorites in this dataset are classified as coming from the asteroid belt, which makes sense because it is one of the most dense region of small rocky bodies in our solar system. Many of these objects follow or evolve into Earth crossing orbits, and a fraction eventually reach the surface as meteorites. Since the majority of these belt meteorites are stony, it is reasonable to conclude that asteroid belt material reaching Earth is dominated by stony compositions rather than metal rich cores or rare planetary fragments
+
+```{r}
+meteroite %>% 
+  ggplot(aes(x = origin, fill = type)) + geom_bar(position =  'dodge') + labs(title = "Total Count by Types")
+
+```
+
+
 ***
 
 ## Northern or Southern? 
@@ -299,7 +350,8 @@ ggplot(hemi , aes(x = "", y = pct, fill = hemisphere)) +
   theme_void()
 ```
 
-#### This is clearly where Antartica takes the lead
+The pie chart shows that the Southern Hemisphere holds the majority of recorded meteorites, with a large contribution coming from finds in Antarctica. This does not mean more meteorites actually fall in the south, but instead it reflects a detection bias. Searches on the Antarctic ice sheet make it much easier to spot and preserve meteorites there compared to foresty or populated regions
+
 
 ```{r}
 meteroite %>%
@@ -314,9 +366,11 @@ meteroite %>%
   theme_minimal()
 ```
 
-#### We can see that while the southern hemisphere holds the most when it comes to total meteors since they're the most with stony, the northern hemisphere is the leader when it comes to iron meteorites
+However, the Northern Hemisphere contributes a relatively larger share of iron meteorites. This may reflect different search strategies and environments: metal meteorites are easier to recognize and recover in populated or agricultural area.
 
 ***
+
+## Mass
 
 ```{r}
 meteroite %>%
@@ -331,36 +385,93 @@ meteroite %>%
     x = "Type",
     y = "Median mass (g)"
   )
-  
-
-
-meteroite %>% ggplot(aes(x = type, y = mass)) + geom_boxplot()
-meteroite %>% ggplot(aes(x = type, y = log(mass))) + geom_boxplot()
 ```
 
+The median mass shows that iron meteorites tend to be heavier than the other types. This fits with their physical properties of being dense, metal rich objects are more likely to survive burning through the atmosphere and reach the ground as larger pieces. Their durability and distinctive metallic-ness also make them easier to recognize and collect once they are on the surface.
 
 ```{r}
-meteroite %>%
-  filter(hemisphere != "Equator") %>% 
-  count(type, fall, hemisphere) %>%                          
-  group_by(type, hemisphere) %>%                              
-  mutate(pct = n / sum(n)) %>%                    
-  ggplot(aes(y = type, x = pct, fill = fall)) +
-  geom_col(position = "fill") +   
-  facet_wrap(~ hemisphere) +
-  scale_x_continuous(labels = scales::percent) +  
-  labs(
-    title = "Percentage of Fell vs Found Within Each Meteorite Type",
-    x = "Meteorite Type",
-    y = "Percentage",
-    fill = "Fall Status"
-  ) 
+meteroite %>% ggplot(aes(x = type, y = log(mass), fill = origin)) + geom_boxplot() + labs(y = "log of Mass", title = "log Mass of Types by Origin")
 ```
 
+Taking the log of mass compresses the wide range of meteorite sizes into a more manageable scale. This transformation makes it easier to compare the typical mass ranges of different types and to see patterns among smaller meteorites that would be hard to distinguish on a raw mass scale dominated by a few very large objects.
+
+***
+
+## World map by origins
 
 ```{r}
-meteroite %>% group_by(hemisphere, year) %>% summarise(n = n()) %>% ggplot(aes(x = year, y = n, color = hemisphere)) + geom_line()
+world <- map_data("world")
+
+meteroite_map <- meteroite %>% 
+  filter(
+    !is.na(reclat),
+    !is.na(reclong),
+    reclat  >= -90, reclat <= 90,
+    reclong >= -180, reclong <= 180
+  )
+
+meteroite_sf <- st_as_sf(
+  meteroite_map,
+  coords = c("reclong", "reclat"),
+  crs    = 4326
+)
+
+p_belt<- mapview(
+  meteroite_sf[meteroite_sf$origin == "Asteroid Belt", ],
+  col.regions = "red",
+  layer.name  = "Asteroid Belt"
+)
+p_core <- mapview(
+  meteroite_sf[meteroite_sf$origin == "Asteroid Core", ],
+  col.regions = "blue",
+  layer.name  = "Asteroid Core")
+p_core_mant <- mapview(
+  meteroite_sf[meteroite_sf$origin == "Core–Mantle ", ],
+  col.regions = "magenta",
+  layer.name  = "Core–Mantle")
+p_mars <- mapview(
+  meteroite_sf[meteroite_sf$origin == "Mars", ],
+  col.regions = "yellow",
+  layer.name  = "Mars")
+p_moon <- mapview(
+  meteroite_sf[meteroite_sf$origin == "Moon", ],
+  col.regions = "green",
+  layer.name  = "Moon")
+p_unk <- mapview(
+  meteroite_sf[meteroite_sf$origin == "Unknown", ],
+  col.regions = "gray",
+  layer.name  = "Unknown")
+
+p_belt + p_core + p_core_mant + p_mars + p_moon + p_unk
+
+
 ```
+
+The origin map confirms that almost all recorded meteorites come from asteroid belt sources or related asteroid interiors, while fragments from the Moon and Mars appear as only a few isolated points. Lunar and Martian meteorites are extremely rare, so it is expected that they form only a tiny fraction of the global distribution compared to the many stony meteorites arriving from ordinary asteroids
+
+***
+
+## Ratio of land mass to meteors found 
+
+```{r}
+land <- 0.29
+ocean <- 0.71
+land_meteors <- meteroite %>% 
+  filter(!is.na(reclat), !is.na(reclong)) %>% 
+  nrow()
+estimated_ocean <- land_meteors * (ocean / land)
+result <- tibble(
+  Region = c("Land (Found)", "Ocean (Estimated)"),
+  Meteorites = c(land_meteors, round(estimated_ocean)))
+kable(result, caption = "Found Land Meteorites vs Estimated Ocean Meteorites")
+ggplot(result, aes(x = Region, y = Meteorites, fill = Region)) + geom_col() +
+  coord_flip() +
+  labs(title = "Estimated Meteorites in the Ocean vs Found on Land",y = "Meteorite Count") +
+  theme_minimal() 
+
+```
+
+Because land makes up only about 29% of Earth’s surface but almost all meteorite finds come from land, we can use a  proportional estimate to estimate how many meteorites likely fell into the ocean (at least). Under the assumption that meteorites fall roughly uniformly over Earth’s surface, the number that landed in the ocean should be several times larger than the number we have found on land, suggesting that most meteorites that reach Earth are still hidden underwater and never recovered.
 
 ***
 
