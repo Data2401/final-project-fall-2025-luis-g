@@ -21,7 +21,6 @@ library(sf)
 library(knitr)
 ```
 
-***
 # Introduction:
 
 #### Source: NASA Open Data ('https://data.nasa.gov/dataset/meteorite-landings')

@@ -2,7 +2,10 @@
 title: "Meteorite Landings"
 author: "Luis G"
 date: "2025-11-13"
-output: html_document
+output: 
+  html_document: 
+    highlight: espresso
+    theme: readable
 ---
 
 
